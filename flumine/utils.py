@@ -1,3 +1,4 @@
+from collections import defaultdict
 import re
 import uuid
 import json
@@ -6,7 +7,7 @@ import hashlib
 import datetime
 import functools
 from pathlib import Path
-from typing import Optional, Tuple, Callable, Union
+from typing import Any, Optional, Tuple, Callable, Union
 from decimal import Decimal, ROUND_HALF_UP
 from betfairlightweight.resources.bettingresources import MarketBook, RunnerBook
 
@@ -230,9 +231,7 @@ def wap(matched: list) -> Tuple[float, float]:
         return round(b, 2), round(a / b, 2)
 
 
-def call_strategy_error_handling(
-    func: Callable, market, market_book: MarketBook
-) -> Optional[bool]:
+def call_strategy_error_handling(func: Callable, market, market_book: MarketBook) -> Optional[bool]:
     try:
         return func(market, market_book)
     except FlumineException as e:
@@ -301,15 +300,10 @@ def call_process_raw_data(strategy, clk: str, publish_time: int, datum: dict) ->
             raise
 
 
-def get_runner_book(
-    market_book: MarketBook, selection_id: int, handicap=0
-) -> Optional[RunnerBook]:
+def get_runner_book(market_book: MarketBook, selection_id: int, handicap=0) -> Optional[RunnerBook]:
     """Returns runner book based on selection id."""
     for runner_book in market_book.runners:
-        if (
-            runner_book.selection_id == selection_id
-            and runner_book.handicap == handicap
-        ):
+        if runner_book.selection_id == selection_id and runner_book.handicap == handicap:
             return runner_book
 
 
@@ -339,3 +333,10 @@ def create_time(publish_time: int, id_: str) -> datetime.datetime:
     event_id, start_time = id_.split(".")
     hour, minute = int(start_time[:2]), int(start_time[2:])
     return pt_datetime.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+
+def get_default_dict(default: Any) -> defaultdict:
+    def default_dict():
+        return defaultdict(default)
+
+    return default_dict

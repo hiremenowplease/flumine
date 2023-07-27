@@ -79,10 +79,7 @@ class OrderValidation(BaseControl):
             return  # some accounts do not have min bet restrictions
         if order_type == OrderTypes.LIMIT:
             size = order.order_type.size or order.order_type.bet_target_size
-            if (
-                size < client.min_bet_size
-                and (order.order_type.price * size) < client.min_bet_payout
-            ):
+            if size < client.min_bet_size and (order.order_type.price * size) < client.min_bet_payout:
                 self._on_error(
                     order,
                     "Order size is less than min bet size ({0}) or payout ({1}) for currency".format(
@@ -90,25 +87,15 @@ class OrderValidation(BaseControl):
                     ),
                 )
         else:  # todo is this correct?
-            if (
-                order.side == "BACK"
-                and order.order_type.liability < client.min_bet_size
-            ):
+            if order.side == "BACK" and order.order_type.liability < client.min_bet_size:
                 self._on_error(
                     order,
-                    "Liability is less than min bet size ({0}) for currency".format(
-                        client.min_bet_size
-                    ),
+                    "Liability is less than min bet size ({0}) for currency".format(client.min_bet_size),
                 )
-            elif (
-                order.side == "LAY"
-                and order.order_type.liability < client.min_bsp_liability
-            ):
+            elif order.side == "LAY" and order.order_type.liability < client.min_bsp_liability:
                 self._on_error(
                     order,
-                    "Liability is less than min BSP payout ({0}) for currency".format(
-                        client.min_bsp_liability
-                    ),
+                    "Liability is less than min BSP payout ({0}) for currency".format(client.min_bsp_liability),
                 )
 
 
@@ -155,24 +142,15 @@ class ExecutionValidation(BaseControl):
 
     def validate_order(self, order, package_type):
         if package_type == OrderPackageType.REPLACE:
-            failed_attempts = self.failed_execution_attempts(
-                order.responses.replace_responses
-            )
+            failed_attempts = self.failed_execution_attempts(order.responses.replace_responses)
         elif package_type == OrderPackageType.UPDATE:
-            failed_attempts = self.failed_execution_attempts(
-                order.responses.update_responses
-            )
+            failed_attempts = self.failed_execution_attempts(order.responses.update_responses)
         elif package_type == OrderPackageType.CANCEL:
-            failed_attempts = self.failed_execution_attempts(
-                order.responses.cancel_responses
-            )
+            failed_attempts = self.failed_execution_attempts(order.responses.cancel_responses)
         else:
             return
 
-        if (
-            not self.order_stream_connected
-            and failed_attempts >= config.execution_retry_attempts
-        ):
+        if not self.order_stream_connected and failed_attempts >= config.execution_retry_attempts:
             self._on_error(
                 order,
                 "OrderStream is not connected, execution of orders is blocked until OrderStream is reconnected",
@@ -240,22 +218,16 @@ class StrategyExposure(BaseControl):
             else:
                 exclusion = None
 
-            current_exposures = market.blotter.get_exposures(
-                strategy, lookup=order.lookup, exclusion=exclusion
-            )
+            current_exposures = market.blotter.get_exposures(strategy, lookup=order.lookup, exclusion=exclusion)
             """
             We use -min(...) in the below, as "worst_possible_profit_on_X" will be negative if the position is
             at risk of loss, while exposure values are always atleast zero.
             Exposure refers to the largest potential loss.
             """
             if order.side == "BACK":
-                current_selection_exposure = -current_exposures[
-                    "worst_possible_profit_on_lose"
-                ]
+                current_selection_exposure = -current_exposures["worst_possible_profit_on_lose"]
             else:
-                current_selection_exposure = -current_exposures[
-                    "worst_possible_profit_on_win"
-                ]
+                current_selection_exposure = -current_exposures["worst_possible_profit_on_win"]
             potential_exposure = current_selection_exposure + order_exposure
             if potential_exposure > strategy.max_selection_exposure:
                 return self._on_error(
@@ -265,3 +237,31 @@ class StrategyExposure(BaseControl):
                         strategy.max_selection_exposure,
                     ),
                 )
+
+
+class CustomStrategyExposure(BaseControl):
+
+    """
+    Validates:
+        exposure ( definition ): on the lay side it means 'to lose amount' on the back side it means 'to win amount'
+
+        - `strategy.validate_order` function
+        - `strategy.back_max_order_exposure`
+        - `strategy.back_max_selection_exposure`
+        - `strategy.lay_max_order_exposure`
+        - `strategy.lay_max_selection_exposure`
+        - `strategy.max_stake`
+
+    Exposure calculation includes pending,
+    executable and execution complete orders.
+
+    Examples:
+    Every order that is submitted to the exchange is validates through this control, taking into consideration
+    the max_order_exposure, max_selection_exposure ( for each side ) and max_stake.
+
+    - If an order exceeds the max stake it will be reduced to have the stake of the max stake and continue through the controls.
+    - If an order exceeds the max order exposure, it will be reduced to match the max order exposure and continue on to be validated against the overall selection exposure.
+    - If an order meets all the previous conditions and exceeds the max selection exposure, the controls
+      will attempt to reduce the order to meet the remaining available exposure within the max_selection_exposure. If there is no
+      remaining exposure it will not be submitted to the exchange and will be logged as a warning.
+    """
