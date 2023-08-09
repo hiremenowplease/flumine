@@ -331,7 +331,7 @@ class WorkersTest(unittest.TestCase):
 class TestCustomWorker:
     @pytest.mark.parametrize(
         "strategy, current_max_order_exposure, current_max_selection_exposure, expected_max_order_exposure, expected_max_selection_exposure",
-        [("my_strategy", 100, 50, 200, 100)("my_strategy2", 33, 70, 400, 1000)],
+        [("my_strategy", 100, 50, 200, 100), ("my_strategy2", 33, 70, 400, 1000)],
     )
     @mock.patch("flumine.worker.get_remote_exposures")
     def test_update_exposure_settings_worker(
