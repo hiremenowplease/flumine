@@ -244,4 +244,3 @@ def _get_cleared_market(flumine, betting_client, market_id: str) -> bool:
         return True
     else:
         return False
-        return False
