@@ -1,12 +1,13 @@
 import logging
-from typing import Type, Iterator, Union, List
-from betfairlightweight import filters
-from betfairlightweight.resources import MarketBook, Race, CricketMatch
+from typing import Iterator, List, Type, Union
 
-from .runnercontext import RunnerContext
+from betfairlightweight import filters
+from betfairlightweight.resources import CricketMatch, MarketBook, Race
+
 from ..markets.market import Market
 from ..streams.marketstream import BaseStream, MarketStream
-from ..utils import create_cheap_hash, STRATEGY_NAME_HASH_LENGTH
+from ..utils import STRATEGY_NAME_HASH_LENGTH, create_cheap_hash
+from .runnercontext import RunnerContext
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,7 @@ class BaseStrategy:
         self,
         market_filter: Union[dict, list],
         market_data_filter: dict = None,
-        sports_data_filter: List[
-            str
-        ] = None,  # 'raceSubscription', 'cricketSubscription'
+        sports_data_filter: List[str] = None,  # 'raceSubscription', 'cricketSubscription'
         streaming_timeout: float = None,
         conflate_ms: int = None,
         stream_class: Type[BaseStream] = MarketStream,
@@ -118,9 +117,7 @@ class BaseStrategy:
         # process marketBook; place/cancel/replace orders
         return
 
-    def check_sports(
-        self, market: Market, sports_data: Union[Race, CricketMatch]
-    ) -> bool:
+    def check_sports(self, market: Market, sports_data: Union[Race, CricketMatch]) -> bool:
         if sports_data.streaming_unique_id not in self.stream_ids:
             return False  # strategy not subscribed to sports stream
         elif self.check_sports_data(market, sports_data):
@@ -128,15 +125,11 @@ class BaseStrategy:
         else:
             return False
 
-    def check_sports_data(
-        self, market: Market, sports_data: Union[Race, CricketMatch]
-    ) -> bool:
+    def check_sports_data(self, market: Market, sports_data: Union[Race, CricketMatch]) -> bool:
         # process_sports_data only executed if this returns True
         return False
 
-    def process_sports_data(
-        self, market: Market, sports_data: Union[Race, CricketMatch]
-    ) -> None:
+    def process_sports_data(self, market: Market, sports_data: Union[Race, CricketMatch]) -> None:
         # process sports data
         return
 
@@ -171,20 +164,14 @@ class BaseStrategy:
         # validate context
         reset_elapsed_seconds = runner_context.reset_elapsed_seconds
         if reset_elapsed_seconds and reset_elapsed_seconds < order.trade.reset_seconds:
-            order.violation_msg = (
-                "strategy.validate_order failed: reset_elapsed_seconds (%s) < reset_seconds (%s)"
-                % (
-                    reset_elapsed_seconds,
-                    order.trade.reset_seconds,
-                )
+            order.violation_msg = "strategy.validate_order failed: reset_elapsed_seconds (%s) < reset_seconds (%s)" % (
+                reset_elapsed_seconds,
+                order.trade.reset_seconds,
             )
             return False
 
         placed_elapsed_seconds = runner_context.placed_elapsed_seconds
-        if (
-            placed_elapsed_seconds
-            and placed_elapsed_seconds < order.trade.place_reset_seconds
-        ):
+        if placed_elapsed_seconds and placed_elapsed_seconds < order.trade.place_reset_seconds:
             order.violation_msg = (
                 "strategy.validate_order failed: placed_elapsed_seconds (%s) < place_reset_seconds (%s)"
                 % (
@@ -195,9 +182,9 @@ class BaseStrategy:
             return False
 
         if runner_context.trade_count >= self.max_trade_count:
-            order.violation_msg = (
-                "strategy.validate_order failed: trade_count (%s) >= max_trade_count (%s)"
-                % (runner_context.trade_count, self.max_trade_count)
+            order.violation_msg = "strategy.validate_order failed: trade_count (%s) >= max_trade_count (%s)" % (
+                runner_context.trade_count,
+                self.max_trade_count,
             )
             return False
         elif runner_context.live_trade_count >= self.max_live_trade_count:
@@ -209,21 +196,15 @@ class BaseStrategy:
 
         return True
 
-    def has_executable_orders(
-        self, market_id: str, selection_id: int, handicap: float = 0
-    ) -> bool:
+    def has_executable_orders(self, market_id: str, selection_id: int, handicap: float = 0) -> bool:
         runner_context = self.get_runner_context(market_id, selection_id, handicap)
         return runner_context.executable_orders
 
-    def get_runner_context(
-        self, market_id: str, selection_id: int, handicap: float = 0
-    ) -> RunnerContext:
+    def get_runner_context(self, market_id: str, selection_id: int, handicap: float = 0) -> RunnerContext:
         try:
             return self._invested[(market_id, selection_id, handicap)]
         except KeyError:
-            self._invested[
-                (market_id, selection_id, handicap)
-            ] = runner_context = RunnerContext(selection_id)
+            self._invested[(market_id, selection_id, handicap)] = runner_context = RunnerContext(selection_id)
             return runner_context
 
     @property
@@ -286,3 +267,7 @@ class Strategies:
 
     def __len__(self) -> int:
         return len(self._strategies)
+
+
+def get_remote_exposures(strategy_name: str) -> tuple[float, float]:
+    return None, None

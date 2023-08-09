@@ -1,13 +1,16 @@
-import time
-import threading
 import logging
+import threading
+import time
 from typing import Callable, Optional
-from betfairlightweight import BetfairError, filters, exceptions
+
+from betfairlightweight import BetfairError, exceptions, filters
+
+from flumine.strategy.strategy import get_remote_exposures
 
 from . import config
+from .clients import ExchangeType
 from .events import events
 from .utils import chunks
-from .clients import ExchangeType
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +64,7 @@ class BackgroundWorker(threading.Thread):
                 },
             )
             try:
-                self.function(
-                    self.context, self.flumine, *self.func_args, **self.func_kwargs
-                )
+                self.function(self.context, self.flumine, *self.func_args, **self.func_kwargs)
             except Exception as e:
                 logger.error(
                     "Error in BackgroundWorker {0}: {1}".format(self.name, e),
@@ -112,9 +113,7 @@ def poll_market_catalogue(context: dict, flumine) -> None:
     # get betfair client
     client = flumine.clients.get_betfair_default()
     markets = [
-        m.market_id
-        for m in list(flumine.markets.markets.values())
-        if m.update_market_catalogue and not m.closed
+        m.market_id for m in list(flumine.markets.markets.values()) if m.update_market_catalogue and not m.closed
     ]
     for market_ids in chunks(markets, 25):
         try:
@@ -160,27 +159,21 @@ def poll_account_balance(context: dict, flumine) -> None:
 
 
 def poll_market_closure(context: dict, flumine) -> None:
-    markets = [
-        market for market in list(flumine.markets.markets.values()) if market.closed
-    ]
+    markets = [market for market in list(flumine.markets.markets.values()) if market.closed]
     for client in flumine.clients:
-        if (
-            client.EXCHANGE != ExchangeType.BETFAIR
-            or client.paper_trade
-            or client.market_recording_mode
-        ):
+        if client.EXCHANGE != ExchangeType.BETFAIR or client.paper_trade or client.market_recording_mode:
             continue
         for market in markets:
             if client.username not in market.orders_cleared:
-                if _get_cleared_orders(
-                    flumine, client.betting_client, market.market_id
-                ):
+                if _get_cleared_orders(flumine, client.betting_client, market.market_id):
                     market.orders_cleared.append(client.username)
             if client.username not in market.market_cleared:
-                if _get_cleared_market(
-                    flumine, client.betting_client, market.market_id
-                ):
+                if _get_cleared_market(flumine, client.betting_client, market.market_id):
                     market.market_cleared.append(client.username)
+
+
+def update_exposure_settings(context: dict, flumine) -> None:
+    ...
 
 
 def _get_cleared_orders(flumine, betting_client, market_id: str) -> bool:
@@ -252,4 +245,5 @@ def _get_cleared_market(flumine, betting_client, market_id: str) -> bool:
         flumine.handler_queue.put(events.ClearedMarketsEvent(cleared_markets))
         return True
     else:
+        return False
         return False

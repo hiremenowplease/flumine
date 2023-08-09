@@ -1,9 +1,9 @@
+import datetime
 import logging
 import unittest
-import datetime
 from unittest import mock
 
-from flumine import utils, FlumineException
+from flumine import FlumineException, utils
 
 
 class UtilsTest(unittest.TestCase):

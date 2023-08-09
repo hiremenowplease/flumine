@@ -237,31 +237,3 @@ class StrategyExposure(BaseControl):
                         strategy.max_selection_exposure,
                     ),
                 )
-
-
-class CustomStrategyExposure(BaseControl):
-
-    """
-    Validates:
-        exposure ( definition ): on the lay side it means 'to lose amount' on the back side it means 'to win amount'
-
-        - `strategy.validate_order` function
-        - `strategy.back_max_order_exposure`
-        - `strategy.back_max_selection_exposure`
-        - `strategy.lay_max_order_exposure`
-        - `strategy.lay_max_selection_exposure`
-        - `strategy.max_stake`
-
-    Exposure calculation includes pending,
-    executable and execution complete orders.
-
-    Examples:
-    Every order that is submitted to the exchange is validates through this control, taking into consideration
-    the max_order_exposure, max_selection_exposure ( for each side ) and max_stake.
-
-    - If an order exceeds the max stake it will be reduced to have the stake of the max stake and continue through the controls.
-    - If an order exceeds the max order exposure, it will be reduced to match the max order exposure and continue on to be validated against the overall selection exposure.
-    - If an order meets all the previous conditions and exceeds the max selection exposure, the controls
-      will attempt to reduce the order to meet the remaining available exposure within the max_selection_exposure. If there is no
-      remaining exposure it will not be submitted to the exchange and will be logged as a warning.
-    """
