@@ -5,8 +5,6 @@ from typing import Callable, Optional
 
 from betfairlightweight import BetfairError, exceptions, filters
 
-from flumine.strategy.strategy import get_remote_exposures
-
 from . import config
 from .clients import ExchangeType
 from .events import events
