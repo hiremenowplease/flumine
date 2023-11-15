@@ -171,7 +171,11 @@ def poll_market_closure(context: dict, flumine) -> None:
 
 
 def update_exposure_settings(context: dict, flumine) -> None:
-    ...
+    for strategy in flumine.strategies:
+        strategy.max_order_exposure, strategy.max_selection_exposure = get_remote_exposures(context, strategy)
+
+def get_remote_exposures(strategy) -> tuple:
+    return strategy.max_order_exposure, strategy.max_selection_exposure
 
 
 def _get_cleared_orders(flumine, betting_client, market_id: str) -> bool:
